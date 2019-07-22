@@ -62,6 +62,22 @@ public:
     
   };
   
+  ENDPOINT_ASYNC("POST", "/", PostEchoStringBody) {
+    
+    ENDPOINT_ASYNC_INIT(PostEchoStringBody)
+    
+    Action act() override {
+      /* return Action to start child coroutine to read body */
+      return request->readBodyToStringAsync().callbackTo(&PostEchoStringBody::returnResponse);
+    }
+    
+    Action returnResponse(const oatpp::String& body){
+      /* return Action to return created OutgoingResponse */
+      return _return(controller->createResponse(Status::CODE_200, body));
+    }
+    
+  };
+
   /**
    *  Echo body endpoint Coroutine. Mapped to "/body/string".
    *  Returns body received in the request

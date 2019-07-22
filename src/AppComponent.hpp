@@ -29,8 +29,8 @@ public:
    */
   OATPP_CREATE_COMPONENT(std::shared_ptr<oatpp::async::Executor>, executor)([] {
     return std::make_shared<oatpp::async::Executor>(
-      9 /* Data-Processing threads */,
-      2 /* I/O threads */,
+      1 /* Data-Processing threads */,
+      1 /* I/O threads */,
       1 /* Timer threads */
     );
   }());
@@ -40,7 +40,8 @@ public:
    */
   OATPP_CREATE_COMPONENT(std::shared_ptr<oatpp::network::ServerConnectionProvider>, serverConnectionProvider)([] {
     /* non_blocking connections should be used with AsyncHttpConnectionHandler for AsyncIO */
-    return oatpp::network::server::SimpleTCPConnectionProvider::createShared(8000);
+    return oatpp::network::server::SimpleTCPConnectionProvider::ccreateShared("10.62.18.29", 11000);
+    //return oatpp::network::server::SimpleTCPConnectionProvider::createShared(11000);
   }());
   
   /**

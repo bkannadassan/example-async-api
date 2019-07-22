@@ -8,8 +8,11 @@ set(CMAKE_CXX_STANDARD 11)
 
 add_library(${project_name}-lib
         src/AppComponent.hpp
+        src/hello-world.cpp
         src/controller/MyController.cpp
         src/controller/MyController.hpp
+        src/PWTCPConnectionProvider.cpp
+        src/PWTCPConnectionProvider.hpp
         src/dto/MyDTOs.hpp
 )
 
@@ -33,7 +36,7 @@ target_link_libraries(${project_name}-exe ${project_name}-lib)
 add_dependencies(${project_name}-exe ${project_name}-lib)
 
 add_executable(${project_name}-test
-        test/tests.cpp
+	test/tests.cpp
 )
 target_link_libraries(${project_name}-test ${project_name}-lib)
 add_dependencies(${project_name}-test ${project_name}-lib)
