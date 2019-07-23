@@ -85,12 +85,14 @@ main(int argc, char **argv)
 		return 1;
 	}
 
+        oatpp::base::Environment::init();
         run1();
 	event_base_dispatch(base);
 
 	evconnlistener_free(listener);
 	event_free(signal_event);
 	event_base_free(base);
+        oatpp::base::Environment::destroy();
 
 	printf("done\n");
 	return 0;

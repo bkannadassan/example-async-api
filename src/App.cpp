@@ -14,8 +14,14 @@
 
 #include <iostream>
 
+const v_int32 STATUS_CREATED = 0;
+const v_int32 STATUS_RUNNING = 1;
+const v_int32 STATUS_STOPPING = 2;
+const v_int32 STATUS_DONE = 3;
+
 std::shared_ptr<oatpp::network::server::PWTCPConnectionProvider> connectionProvider;
 std::shared_ptr<oatpp::web::server::HttpConnectionHandler> connectionHandler;
+std::shared_ptr<oatpp::web::server::AsyncHttpConnectionHandler> aconnectionHandler;
 
 /**
  *  run() method.
@@ -34,7 +40,7 @@ public:
   }
 }; 
 void run() {
-
+/*
   auto router = oatpp::web::server::HttpRouter::createShared();
 
   connectionHandler = oatpp::web::server::HttpConnectionHandler::createShared(router);
@@ -45,20 +51,36 @@ void run() {
 
   OATPP_LOGD("Server", "Running on port %s...", connectionProvider->getProperty("port").toString()->c_str());
   OATPP_LOGD("Server", "Running on port %s...", connectionProvider->getProperty("host").toString()->c_str());
+*/
+  static AppComponent components; // Create scope Environment components
+
+  /* create ApiControllers and add endpoints to router */
+
+  auto router = components.httpRouter.getObject();
+
+  auto myController = MyController::createShared();
+  myController->addEndpointsToRouter(router);
+
+  /* create server */
+
+  static oatpp::network::server::Server server(components.serverConnectionProvider.getObject(),
+                                        components.serverConnectionHandler.getObject());
+
+  server.setStatus(::STATUS_CREATED, ::STATUS_RUNNING);
+
+  OATPP_LOGD("Server", "Running on port %s...", components.serverConnectionProvider.getObject()->getProperty("port").toString()->c_str());
+  OATPP_LOGD("Server", "Running on port %s...", components.serverConnectionProvider.getObject()->getProperty("host").toString()->c_str());
  
   //server.run();
 }
 
 void run1()
 {
-  oatpp::base::Environment::init();
   run();
   /* Print how much objects were created during app running, and what have left-probably leaked */
   /* Disable object counting for release builds using '-D OATPP_DISABLE_ENV_OBJECT_COUNTERS' flag for better performance */
   std::cout << "\nEnvironment:\n";
   std::cout << "objectsCount = " << oatpp::base::Environment::getObjectsCount() << "\n";
   std::cout << "objectsCreated = " << oatpp::base::Environment::getObjectsCreated() << "\n\n";
-  
-  oatpp::base::Environment::destroy();
   
 }

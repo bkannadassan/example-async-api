@@ -11,11 +11,14 @@
 
 #include "oatpp/web/server/AsyncHttpConnectionHandler.hpp"
 #include "oatpp/web/server/HttpRouter.hpp"
-#include "oatpp/network/server/SimpleTCPConnectionProvider.hpp"
+#include "./PWTCPConnectionProvider.hpp"
 
 #include "oatpp/parser/json/mapping/ObjectMapper.hpp"
 
 #include "oatpp/core/macro/component.hpp"
+
+extern std::shared_ptr<oatpp::network::server::PWTCPConnectionProvider> connectionProvider;
+extern std::shared_ptr<oatpp::web::server::AsyncHttpConnectionHandler> aconnectionHandler;
 
 /**
  *  Class which creates and holds Application components and registers components in oatpp::base::Environment
@@ -40,8 +43,9 @@ public:
    */
   OATPP_CREATE_COMPONENT(std::shared_ptr<oatpp::network::ServerConnectionProvider>, serverConnectionProvider)([] {
     /* non_blocking connections should be used with AsyncHttpConnectionHandler for AsyncIO */
-    return oatpp::network::server::SimpleTCPConnectionProvider::ccreateShared("10.62.18.29", 11000);
-    //return oatpp::network::server::SimpleTCPConnectionProvider::createShared(11000);
+     connectionProvider = oatpp::network::server::PWTCPConnectionProvider::ccreateShared("10.62.18.29", 11000);
+     return connectionProvider;
+    //return oatpp::network::server::PWTCPConnectionProvider::createShared(11000);
   }());
   
   /**
@@ -57,7 +61,8 @@ public:
   OATPP_CREATE_COMPONENT(std::shared_ptr<oatpp::network::server::ConnectionHandler>, serverConnectionHandler)([] {
     OATPP_COMPONENT(std::shared_ptr<oatpp::web::server::HttpRouter>, router); // get Router component
     OATPP_COMPONENT(std::shared_ptr<oatpp::async::Executor>, executor); // get Async executor component
-    return oatpp::web::server::AsyncHttpConnectionHandler::createShared(router, executor);
+    aconnectionHandler = oatpp::web::server::AsyncHttpConnectionHandler::createShared(router, executor);
+    return aconnectionHandler;
   }());
   
   /**

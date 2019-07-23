@@ -92,7 +92,7 @@ pw_accept_cb(struct evconnlistener *listener, evutil_socket_t fd,
     struct sockaddr *sa, int socklen, void *user_data) {
   std::shared_ptr<const std::unordered_map<oatpp::String, oatpp::String>> params;
   std::shared_ptr<oatpp::data::stream::IOStream> conCreated = Connection::createShared(fd);
-  connectionHandler->handleConnection(conCreated, params);
+  aconnectionHandler->handleConnection(conCreated, params);
 }
   
 static void
