@@ -21,13 +21,17 @@ add_library(${project_name}-lib
 ## link libs
 
 find_package(oatpp 0.19.6 REQUIRED)
+find_package(oatpp-swagger REQUIRED)
 
 target_link_libraries(${project_name}-lib
         PUBLIC oatpp::oatpp
         PUBLIC oatpp::oatpp-test
 )
 
+SET(CMAKE_CXX_FLAGS  "-levent")
+
 target_include_directories(${project_name}-lib PUBLIC src)
+include_directories("/usr/local/include/oatpp-0.19.6/oatpp-swagger")
 
 ## add executables
 

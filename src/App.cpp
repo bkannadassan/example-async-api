@@ -6,6 +6,7 @@
 //  Copyright © 2018 oatpp. All rights reserved.
 //
 
+#include <oatpp-swagger/Controller.hpp>
 #include "./controller/MyController.hpp"
 #include "./PWServer.hpp"
 #include "./AppComponent.hpp"
@@ -59,6 +60,8 @@ void run() {
   auto router = components.httpRouter.getObject();
 
   auto myController = MyController::createShared();
+
+ auto docEndpoints = oatpp::swagger::Controller::Endpoints::createShared();
 
   myController->addEndpointsToRouter(router);
 
