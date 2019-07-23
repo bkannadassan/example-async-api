@@ -23,6 +23,7 @@
  ***************************************************************************/
 
 #include "./PWTCPConnectionProvider.hpp"
+#include "./PWServer.hpp"
 #include "./AppComponent.hpp"
 #include "oatpp/network/server/Server.hpp"
 #include "oatpp/web/server/HttpConnectionHandler.hpp"
@@ -53,11 +54,9 @@
 extern struct event_base *base;
 extern struct sockaddr_in sin;
 extern struct evconnlistener *listener;
-extern std::shared_ptr<oatpp::network::server::PWTCPConnectionProvider> connectionProvider;
-extern std::shared_ptr<oatpp::web::server::HttpConnectionHandler> connectionHandler;
+extern oatpp::network::server::PWServer *server;
 
 namespace oatpp { namespace network { namespace server {
-
 PWTCPConnectionProvider::PWTCPConnectionProvider(const oatpp::String& host, v_word16 port)
   : m_host(host)
   , m_port(port)
@@ -90,9 +89,7 @@ void PWTCPConnectionProvider::close() {
 void
 pw_accept_cb(struct evconnlistener *listener, evutil_socket_t fd,
     struct sockaddr *sa, int socklen, void *user_data) {
-  std::shared_ptr<const std::unordered_map<oatpp::String, oatpp::String>> params;
-  std::shared_ptr<oatpp::data::stream::IOStream> conCreated = Connection::createShared(fd);
-  aconnectionHandler->handleConnection(conCreated, params);
+    ::server->addConn(fd);
 }
   
 static void
@@ -136,31 +133,7 @@ oatpp::data::v_io_handle PWTCPConnectionProvider::instantiateServer()
 }
   
 std::shared_ptr<oatpp::data::stream::IOStream> PWTCPConnectionProvider::getConnection(){
-
-  oatpp::data::v_io_handle handle = accept(m_serverHandle, nullptr, nullptr);
-  
-  if (handle < 0) {
-    v_int32 error = errno;
-    if(error == EAGAIN || error == EWOULDBLOCK){
-      return nullptr;
-    } else {
-      if(!m_closed) { // m_serverHandle==0 if ConnectionProvider was closed. Not an error.
-        OATPP_LOGD("[oatpp::network::server::PWTCPConnectionProvider::getConnection()]", "Error. %d", error);
-      }
-      return nullptr;
-    }
-  }
-  
-#ifdef SO_NOSIGPIPE
-  int yes = 1;
-  v_int32 ret = setsockopt(handle, SOL_SOCKET, SO_NOSIGPIPE, &yes, sizeof(int));
-  if(ret < 0) {
-    OATPP_LOGD("[oatpp::network::server::PWTCPConnectionProvider::getConnection()]", "Warning. Failed to set %s for socket", "SO_NOSIGPIPE");
-  }
-#endif
-  
-  return Connection::createShared(handle);
-  
+  return NULL;
 }
 
 }}}

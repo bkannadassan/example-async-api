@@ -7,6 +7,7 @@
 //
 
 #include "./controller/MyController.hpp"
+#include "./PWServer.hpp"
 #include "./AppComponent.hpp"
 #include "./PWTCPConnectionProvider.hpp"
 
@@ -14,14 +15,12 @@
 
 #include <iostream>
 
+class PWServer;
 const v_int32 STATUS_CREATED = 0;
 const v_int32 STATUS_RUNNING = 1;
 const v_int32 STATUS_STOPPING = 2;
 const v_int32 STATUS_DONE = 3;
-
-std::shared_ptr<oatpp::network::server::PWTCPConnectionProvider> connectionProvider;
-std::shared_ptr<oatpp::web::server::HttpConnectionHandler> connectionHandler;
-std::shared_ptr<oatpp::web::server::AsyncHttpConnectionHandler> aconnectionHandler;
+oatpp::network::server::PWServer *server;
 
 /**
  *  run() method.
@@ -52,6 +51,7 @@ void run() {
   OATPP_LOGD("Server", "Running on port %s...", connectionProvider->getProperty("port").toString()->c_str());
   OATPP_LOGD("Server", "Running on port %s...", connectionProvider->getProperty("host").toString()->c_str());
 */
+
   static AppComponent components; // Create scope Environment components
 
   /* create ApiControllers and add endpoints to router */
@@ -59,14 +59,15 @@ void run() {
   auto router = components.httpRouter.getObject();
 
   auto myController = MyController::createShared();
+
   myController->addEndpointsToRouter(router);
 
   /* create server */
 
-  static oatpp::network::server::Server server(components.serverConnectionProvider.getObject(),
-                                        components.serverConnectionHandler.getObject());
+  server = new oatpp::network::server::PWServer(components.serverConnectionProvider.getObject(),
+                                                components.serverConnectionHandler.getObject());
 
-  server.setStatus(::STATUS_CREATED, ::STATUS_RUNNING);
+  server->setStatus(::STATUS_CREATED, ::STATUS_RUNNING);
 
   OATPP_LOGD("Server", "Running on port %s...", components.serverConnectionProvider.getObject()->getProperty("port").toString()->c_str());
   OATPP_LOGD("Server", "Running on port %s...", components.serverConnectionProvider.getObject()->getProperty("host").toString()->c_str());

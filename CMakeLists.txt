@@ -13,6 +13,8 @@ add_library(${project_name}-lib
         src/controller/MyController.hpp
         src/PWTCPConnectionProvider.cpp
         src/PWTCPConnectionProvider.hpp
+        src/PWServer.hpp
+        src/PWServer.cpp
         src/dto/MyDTOs.hpp
 )
 
