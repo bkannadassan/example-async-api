@@ -41,6 +41,9 @@ public:
 }; 
 void run() {
 /*
+ *  This is for Blocking Call Use as needed
+ */
+/*
   auto router = oatpp::web::server::HttpRouter::createShared();
 
   connectionHandler = oatpp::web::server::HttpConnectionHandler::createShared(router);
@@ -53,19 +56,13 @@ void run() {
   OATPP_LOGD("Server", "Running on port %s...", connectionProvider->getProperty("host").toString()->c_str());
 */
 
-  static AppComponent components; // Create scope Environment components
-
-  /* create ApiControllers and add endpoints to router */
+  static AppComponent components;
 
   auto router = components.httpRouter.getObject();
 
   auto myController = MyController::createShared();
 
- auto docEndpoints = oatpp::swagger::Controller::Endpoints::createShared();
-
   myController->addEndpointsToRouter(router);
-
-  /* create server */
 
   server = new oatpp::network::server::PWServer(components.serverConnectionProvider.getObject(),
                                                 components.serverConnectionHandler.getObject());
@@ -74,8 +71,6 @@ void run() {
 
   OATPP_LOGD("Server", "Running on port %s...", components.serverConnectionProvider.getObject()->getProperty("port").toString()->c_str());
   OATPP_LOGD("Server", "Running on port %s...", components.serverConnectionProvider.getObject()->getProperty("host").toString()->c_str());
- 
-  //server.run();
 }
 
 void run1()

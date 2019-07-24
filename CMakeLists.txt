@@ -28,7 +28,7 @@ target_link_libraries(${project_name}-lib
         PUBLIC oatpp::oatpp-test
 )
 
-SET(CMAKE_CXX_FLAGS  "-levent")
+SET(CMAKE_CXX_FLAGS  "-levent -g -lefence")
 
 target_include_directories(${project_name}-lib PUBLIC src)
 include_directories("/usr/local/include/oatpp-0.19.6/oatpp-swagger")
