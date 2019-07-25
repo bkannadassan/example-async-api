@@ -58,9 +58,9 @@ void run() {
 
   static AppComponent components;
 
-  auto router = components.httpRouter.getObject();
+  static auto router = components.httpRouter.getObject();
 
-  auto myController = MyController::createShared();
+  static auto myController = MyController::createShared();
 
   myController->addEndpointsToRouter(router);
 
