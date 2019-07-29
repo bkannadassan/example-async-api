@@ -1,0 +1,658 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+old mode 100644
+new mode 100755
+index 2d7eec8..13eef60
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -8,8 +8,11 @@ set(CMAKE_CXX_STANDARD 11)
+ 
+ add_library(${project_name}-lib
+         src/AppComponent.hpp
++        src/hello-world.cpp
+         src/controller/MyController.cpp
+         src/controller/MyController.hpp
++        src/PWTCPConnectionProvider.cpp
++        src/PWTCPConnectionProvider.hpp
+         src/dto/MyDTOs.hpp
+ )
+ 
+@@ -33,7 +36,7 @@ target_link_libraries(${project_name}-exe ${project_name}-lib)
+ add_dependencies(${project_name}-exe ${project_name}-lib)
+ 
+ add_executable(${project_name}-test
+-        test/tests.cpp
++	test/tests.cpp
+ )
+ target_link_libraries(${project_name}-test ${project_name}-lib)
+ add_dependencies(${project_name}-test ${project_name}-lib)
+diff --git a/src/App.cpp b/src/App.cpp
+old mode 100644
+new mode 100755
+index 4851d1e..4cf92b0
+--- a/src/App.cpp
++++ b/src/App.cpp
+@@ -8,48 +8,51 @@
+ 
+ #include "./controller/MyController.hpp"
+ #include "./AppComponent.hpp"
++#include "./PWTCPConnectionProvider.hpp"
+ 
+ #include "oatpp/network/server/Server.hpp"
+ 
+ #include <iostream>
+ 
++std::shared_ptr<oatpp::network::server::PWTCPConnectionProvider> connectionProvider;
++std::shared_ptr<oatpp::web::server::HttpConnectionHandler> connectionHandler;
++
+ /**
+  *  run() method.
+  *  1) set Environment components.
+  *  2) add ApiController's endpoints to router
+  *  3) run server
+  */
++class Handler : public oatpp::web::server::HttpRequestHandler {
++public:
++
++  /**
++   * Handle incoming request and return outgoing response.
++   */
++  std::shared_ptr<OutgoingResponse> handle(const std::shared_ptr<IncomingRequest>& request) override {
++    return ResponseFactory::createResponse(Status::CODE_200, "Hello World!");
++  }
++}; 
+ void run() {
+-  
+-  AppComponent components; // Create scope Environment components
+-  
+-  /* create ApiControllers and add endpoints to router */
+-  
+-  auto router = components.httpRouter.getObject();
+-  
+-  auto myController = MyController::createShared();
+-  myController->addEndpointsToRouter(router);
+-  
+-  /* create server */
+-  
+-  oatpp::network::server::Server server(components.serverConnectionProvider.getObject(),
+-                                        components.serverConnectionHandler.getObject());
+-  
+-  OATPP_LOGD("Server", "Running on port %s...", components.serverConnectionProvider.getObject()->getProperty("port").toString()->c_str());
+-  
+-  server.run();
+-  
+-}
+ 
+-/**
+- *  main
+- */
+-int main(int argc, const char * argv[]) {
++  auto router = oatpp::web::server::HttpRouter::createShared();
+ 
+-  oatpp::base::Environment::init();
++  connectionHandler = oatpp::web::server::HttpConnectionHandler::createShared(router);
++
++  connectionProvider = oatpp::network::server::PWTCPConnectionProvider::createShared(11000);
+ 
++  static oatpp::network::server::Server server(connectionProvider, connectionHandler);
++
++  OATPP_LOGD("Server", "Running on port %s...", connectionProvider->getProperty("port").toString()->c_str());
++  OATPP_LOGD("Server", "Running on port %s...", connectionProvider->getProperty("host").toString()->c_str());
++ 
++  //server.run();
++}
++
++void run1()
++{
++  oatpp::base::Environment::init();
+   run();
+-  
+   /* Print how much objects were created during app running, and what have left-probably leaked */
+   /* Disable object counting for release builds using '-D OATPP_DISABLE_ENV_OBJECT_COUNTERS' flag for better performance */
+   std::cout << "\nEnvironment:\n";
+@@ -58,5 +61,4 @@ int main(int argc, const char * argv[]) {
+   
+   oatpp::base::Environment::destroy();
+   
+-  return 0;
+ }
+diff --git a/src/AppComponent.hpp b/src/AppComponent.hpp
+old mode 100644
+new mode 100755
+index d6aa608..823600a
+--- a/src/AppComponent.hpp
++++ b/src/AppComponent.hpp
+@@ -29,8 +29,8 @@ public:
+    */
+   OATPP_CREATE_COMPONENT(std::shared_ptr<oatpp::async::Executor>, executor)([] {
+     return std::make_shared<oatpp::async::Executor>(
+-      9 /* Data-Processing threads */,
+-      2 /* I/O threads */,
++      1 /* Data-Processing threads */,
++      1 /* I/O threads */,
+       1 /* Timer threads */
+     );
+   }());
+@@ -40,7 +40,8 @@ public:
+    */
+   OATPP_CREATE_COMPONENT(std::shared_ptr<oatpp::network::ServerConnectionProvider>, serverConnectionProvider)([] {
+     /* non_blocking connections should be used with AsyncHttpConnectionHandler for AsyncIO */
+-    return oatpp::network::server::SimpleTCPConnectionProvider::createShared(8000);
++    return oatpp::network::server::SimpleTCPConnectionProvider::ccreateShared("10.62.18.29", 11000);
++    //return oatpp::network::server::SimpleTCPConnectionProvider::createShared(11000);
+   }());
+   
+   /**
+diff --git a/src/PWTCPConnectionProvider.cpp b/src/PWTCPConnectionProvider.cpp
+new file mode 100644
+index 0000000..b9de6f8
+--- /dev/null
++++ b/src/PWTCPConnectionProvider.cpp
+@@ -0,0 +1,166 @@
++/***************************************************************************
++ *
++ * Project         _____    __   ____   _      _
++ *                (  _  )  /__\ (_  _)_| |_  _| |_
++ *                 )(_)(  /(__)\  )( (_   _)(_   _)
++ *                (_____)(__)(__)(__)  |_|    |_|
++ *
++ *
++ * Copyright 2018-present, Leonid Stryzhevskyi <lganzzzo@gmail.com>
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ *
++ ***************************************************************************/
++
++#include "./PWTCPConnectionProvider.hpp"
++#include "./AppComponent.hpp"
++#include "oatpp/network/server/Server.hpp"
++#include "oatpp/web/server/HttpConnectionHandler.hpp"
++
++#include "oatpp/network/Connection.hpp"
++
++#include "oatpp/core/utils/ConversionUtils.hpp"
++
++#include <signal.h>
++
++#include <event2/event.h>
++#include <event2/event_struct.h>
++#include <event2/bufferevent.h>
++#include <event2/buffer.h>
++#include <event2/listener.h>
++#include <event2/http.h>
++#include <event2/util.h>
++#include <event2/event.h>
++#include <fcntl.h>
++
++#include <netdb.h>
++#include <arpa/inet.h>
++#include <sys/socket.h>
++#include <netinet/tcp.h>
++#include <unistd.h>
++
++
++extern struct event_base *base;
++extern struct sockaddr_in sin;
++extern struct evconnlistener *listener;
++extern std::shared_ptr<oatpp::network::server::PWTCPConnectionProvider> connectionProvider;
++extern std::shared_ptr<oatpp::web::server::HttpConnectionHandler> connectionHandler;
++
++namespace oatpp { namespace network { namespace server {
++
++PWTCPConnectionProvider::PWTCPConnectionProvider(const oatpp::String& host, v_word16 port)
++  : m_host(host)
++  , m_port(port)
++{
++  m_serverHandle = instantiateServer();
++  setProperty(PROPERTY_HOST, m_host);
++  setProperty(PROPERTY_PORT, oatpp::utils::conversion::int32ToStr(port));
++}
++
++PWTCPConnectionProvider::PWTCPConnectionProvider(v_word16 port)
++  : m_port(port)
++  , m_closed(false)
++{
++  m_serverHandle = instantiateServer();
++  setProperty(PROPERTY_HOST, "localhost");
++  setProperty(PROPERTY_PORT, oatpp::utils::conversion::int32ToStr(port));
++}
++
++PWTCPConnectionProvider::~PWTCPConnectionProvider() {
++  close();
++}
++
++void PWTCPConnectionProvider::close() {
++  if(!m_closed) {
++    m_closed = true;
++    ::close(m_serverHandle);
++  }
++}
++
++void
++pw_accept_cb(struct evconnlistener *listener, evutil_socket_t fd,
++    struct sockaddr *sa, int socklen, void *user_data) {
++  std::shared_ptr<const std::unordered_map<oatpp::String, oatpp::String>> params;
++  std::shared_ptr<oatpp::data::stream::IOStream> conCreated = Connection::createShared(fd);
++  connectionHandler->handleConnection(conCreated, params);
++}
++  
++static void
++signal_cb(evutil_socket_t sig, short events, void *user_data)
++{
++	struct event_base *base = (event_base *)user_data;
++	struct timeval delay = { 2, 0 };
++
++	printf("Caught an interrupt signal; exiting cleanly in two seconds.\n");
++
++	event_base_loopexit(base, &delay);
++}
++
++static struct event *signal_event;
++oatpp::data::v_io_handle PWTCPConnectionProvider::instantiateServer()
++{
++  memset(&sin, 0, sizeof(sin));
++  sin.sin_family = AF_INET;
++  sin.sin_port = htons(m_port);
++
++  listener = evconnlistener_new_bind(::base, pw_accept_cb, (void *)::base,
++      LEV_OPT_REUSEABLE|LEV_OPT_CLOSE_ON_FREE, -1,
++      (struct sockaddr*)&::sin,
++      sizeof(::sin));
++  if (!listener) {
++	  fprintf(stderr, "Could not create a listener!\n");
++	  return 1;
++  }
++
++  signal_event=NULL;
++
++  signal_event = evsignal_new(::base, SIGINT, signal_cb, (void *)::base);
++
++  if (!signal_event || event_add(signal_event, NULL)<0) {
++	  fprintf(stderr, "Could not create/add a signal event!\n");
++	  return 1;
++  }
++
++
++  return evconnlistener_get_fd(listener);
++}
++  
++std::shared_ptr<oatpp::data::stream::IOStream> PWTCPConnectionProvider::getConnection(){
++
++  oatpp::data::v_io_handle handle = accept(m_serverHandle, nullptr, nullptr);
++  
++  if (handle < 0) {
++    v_int32 error = errno;
++    if(error == EAGAIN || error == EWOULDBLOCK){
++      return nullptr;
++    } else {
++      if(!m_closed) { // m_serverHandle==0 if ConnectionProvider was closed. Not an error.
++        OATPP_LOGD("[oatpp::network::server::PWTCPConnectionProvider::getConnection()]", "Error. %d", error);
++      }
++      return nullptr;
++    }
++  }
++  
++#ifdef SO_NOSIGPIPE
++  int yes = 1;
++  v_int32 ret = setsockopt(handle, SOL_SOCKET, SO_NOSIGPIPE, &yes, sizeof(int));
++  if(ret < 0) {
++    OATPP_LOGD("[oatpp::network::server::PWTCPConnectionProvider::getConnection()]", "Warning. Failed to set %s for socket", "SO_NOSIGPIPE");
++  }
++#endif
++  
++  return Connection::createShared(handle);
++  
++}
++
++}}}
+diff --git a/src/PWTCPConnectionProvider.hpp b/src/PWTCPConnectionProvider.hpp
+new file mode 100644
+index 0000000..41157a6
+--- /dev/null
++++ b/src/PWTCPConnectionProvider.hpp
+@@ -0,0 +1,119 @@
++/***************************************************************************
++ *
++ * Project         _____    __   ____   _      _
++ *                (  _  )  /__\ (_  _)_| |_  _| |_
++ *                 )(_)(  /(__)\  )( (_   _)(_   _)
++ *                (_____)(__)(__)(__)  |_|    |_|
++ *
++ *
++ * Copyright 2018-present, Leonid Stryzhevskyi <lganzzzo@gmail.com>
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ *
++ ***************************************************************************/
++
++#ifndef oatpp_netword_server_PWTCPConnectionProvider_hpp
++#define oatpp_netword_server_PWTCPConnectionProvider_hpp
++
++#include "oatpp/network/ConnectionProvider.hpp"
++
++#include "oatpp/core/data/stream/Stream.hpp"
++#include "oatpp/core/Types.hpp"
++
++namespace oatpp { namespace network { namespace server {
++
++/**
++ * Simple provider of TCP connections.
++ */
++class PWTCPConnectionProvider : public base::Countable, public ServerConnectionProvider {
++private:
++  v_word16 m_port;
++  oatpp::String m_host;
++  bool m_closed;
++  oatpp::data::v_io_handle m_serverHandle;
++private:
++  oatpp::data::v_io_handle instantiateServer();
++public:
++
++  /**
++   * Constructor.
++   * @param port - port to listen for incoming connections.
++   * @param port
++   */
++  PWTCPConnectionProvider(const oatpp::String& host, v_word16 port);
++  PWTCPConnectionProvider(v_word16 port);
++public:
++
++  /**
++   * Create shared PWTCPConnectionProvider.
++   * @param port - port to listen for incoming connections.
++   * @param port
++   * @return - `std::shared_ptr` to PWTCPConnectionProvider.
++   */
++  static std::shared_ptr<PWTCPConnectionProvider> createShared(v_word16 port){
++    return std::make_shared<PWTCPConnectionProvider>(port);
++  }
++
++  static std::shared_ptr<PWTCPConnectionProvider> ccreateShared(const oatpp::String& host, v_word16 port){
++    return std::make_shared<PWTCPConnectionProvider>(host, port);
++  }
++
++  /**
++   * Virtual destructor.
++   */
++  ~PWTCPConnectionProvider();
++
++  /**
++   * Close accept-socket.
++   */
++  void close() override;
++
++  /**
++   * Get incoming connection.
++   * @return &id:oatpp::data::stream::IOStream;.
++   */
++  std::shared_ptr<IOStream> getConnection() override;
++
++  /**
++   * No need to implement this.<br>
++   * For Asynchronous IO in oatpp it is considered to be a good practice
++   * to accept connections in a seperate thread with the blocking accept()
++   * and then process connections in Asynchronous manner with non-blocking read/write.
++   * <br>
++   * *It may be implemented later*
++   */
++  oatpp::async::CoroutineStarterForResult<const std::shared_ptr<oatpp::data::stream::IOStream>&> getConnectionAsync() override {
++    /*
++     *  No need to implement this.
++     *  For Asynchronous IO in oatpp it is considered to be a good practice
++     *  to accept connections in a seperate thread with the blocking accept()
++     *  and then process connections in Asynchronous manner with non-blocking read/write
++     *
++     *  It may be implemented later
++     */
++    throw std::runtime_error("[oatpp::network::server::PWTCPConnectionProvider::getConnectionAsync()]: Error. Not implemented.");
++  }
++
++  /**
++   * Get port.
++   * @return
++   */
++  v_word16 getPort(){
++    return m_port;
++  }
++  
++};
++  
++}}}
++
++#endif /* oatpp_netword_server_PWTCPConnectionProvider_hpp */
+diff --git a/src/controller/MyController.hpp b/src/controller/MyController.hpp
+old mode 100644
+new mode 100755
+index f175f66..b92c36f
+--- a/src/controller/MyController.hpp
++++ b/src/controller/MyController.hpp
+@@ -62,6 +62,22 @@ public:
+     
+   };
+   
++  ENDPOINT_ASYNC("POST", "/", PostEchoStringBody) {
++    
++    ENDPOINT_ASYNC_INIT(PostEchoStringBody)
++    
++    Action act() override {
++      /* return Action to start child coroutine to read body */
++      return request->readBodyToStringAsync().callbackTo(&PostEchoStringBody::returnResponse);
++    }
++    
++    Action returnResponse(const oatpp::String& body){
++      /* return Action to return created OutgoingResponse */
++      return _return(controller->createResponse(Status::CODE_200, body));
++    }
++    
++  };
++
+   /**
+    *  Echo body endpoint Coroutine. Mapped to "/body/string".
+    *  Returns body received in the request
+diff --git a/src/dto/MyDTOs.hpp b/src/dto/MyDTOs.hpp
+old mode 100644
+new mode 100755
+index 7cbfae9..f24fc75
+--- a/src/dto/MyDTOs.hpp
++++ b/src/dto/MyDTOs.hpp
+@@ -9,8 +9,8 @@
+ #ifndef MyDTOs_hpp
+ #define MyDTOs_hpp
+ 
+-#include "oatpp/core/Types.hpp"
+-#include "oatpp/core/macro/codegen.hpp"
++#include <oatpp/core/Types.hpp>
++#include <oatpp/core/macro/codegen.hpp>
+ 
+ #include OATPP_CODEGEN_BEGIN(DTO)
+ 
+diff --git a/src/hello-world.cpp b/src/hello-world.cpp
+new file mode 100644
+index 0000000..4dae9ee
+--- /dev/null
++++ b/src/hello-world.cpp
+@@ -0,0 +1,152 @@
++/*
++  This example program provides a trivial server program that listens for TCP
++  connections on port 9995.  When they arrive, it writes a short message to
++  each client connection, and closes each connection once it is flushed.
++
++  Where possible, it exits cleanly in response to a SIGINT (ctrl-c).
++*/
++
++
++#include <string.h>
++#include <errno.h>
++#include <stdio.h>
++#include <signal.h>
++#ifndef _WIN32
++#include <netinet/in.h>
++# ifdef _XOPEN_SOURCE_EXTENDED
++#  include <arpa/inet.h>
++# endif
++#include <sys/socket.h>
++#endif
++
++#include <event2/bufferevent.h>
++#include <event2/buffer.h>
++#include <event2/listener.h>
++#include <event2/util.h>
++#include <event2/event.h>
++#include "oatpp/network/ConnectionProvider.hpp"
++
++#include "oatpp/core/data/stream/Stream.hpp"
++#include "oatpp/core/Types.hpp"
++
++
++struct event_base *base;
++struct evconnlistener *listener;
++static struct event *signal_event;
++
++struct sockaddr_in sin;
++static const char MESSAGE[] = "Hello, World!\n";
++
++static const int PORT = 9995;
++static const int PORT1 = 8000;
++
++void listener_cb(struct evconnlistener *, evutil_socket_t,
++    struct sockaddr *, int socklen, void *);
++static void conn_writecb(struct bufferevent *, void *);
++static void conn_eventcb(struct bufferevent *, short, void *);
++static void signal_cb(evutil_socket_t, short, void *);
++
++extern void run1();
++
++int
++main(int argc, char **argv)
++{
++#ifdef _WIN32
++	WSADATA wsa_data;
++	WSAStartup(0x0201, &wsa_data);
++#endif
++
++	base = event_base_new();
++	if (!base) {
++		fprintf(stderr, "Could not initialize libevent!\n");
++		return 1;
++	}
++
++        {
++	  memset(&sin, 0, sizeof(sin));
++	  sin.sin_family = AF_INET;
++	  sin.sin_port = htons(PORT);
++
++	  listener = evconnlistener_new_bind(base, listener_cb, (void *)base,
++	    LEV_OPT_REUSEABLE|LEV_OPT_CLOSE_ON_FREE, -1,
++	    (struct sockaddr*)&sin,
++	    sizeof(sin));
++        }
++
++	if (!listener) {
++		fprintf(stderr, "Could not create a listener!\n");
++		return 1;
++	}
++
++	signal_event = evsignal_new(base, SIGINT, signal_cb, (void *)base);
++
++	if (!signal_event || event_add(signal_event, NULL)<0) {
++		fprintf(stderr, "Could not create/add a signal event!\n");
++		return 1;
++	}
++
++        run1();
++	event_base_dispatch(base);
++
++	evconnlistener_free(listener);
++	event_free(signal_event);
++	event_base_free(base);
++
++	printf("done\n");
++	return 0;
++}
++
++void
++listener_cb(struct evconnlistener *listener, evutil_socket_t fd,
++    struct sockaddr *sa, int socklen, void *user_data)
++{
++	struct event_base *base = (event_base *)user_data;
++	struct bufferevent *bev;
++
++	bev = bufferevent_socket_new(base, fd, BEV_OPT_CLOSE_ON_FREE);
++	if (!bev) {
++		fprintf(stderr, "Error constructing bufferevent!");
++		event_base_loopbreak(base);
++		return;
++	}
++	bufferevent_setcb(bev, NULL, conn_writecb, conn_eventcb, NULL);
++	bufferevent_enable(bev, EV_WRITE);
++	bufferevent_disable(bev, EV_READ);
++
++	bufferevent_write(bev, MESSAGE, strlen(MESSAGE));
++}
++
++static void
++conn_writecb(struct bufferevent *bev, void *user_data)
++{
++	struct evbuffer *output = bufferevent_get_output(bev);
++	if (evbuffer_get_length(output) == 0) {
++		printf("flushed answer\n");
++		bufferevent_free(bev);
++	}
++}
++
++static void
++conn_eventcb(struct bufferevent *bev, short events, void *user_data)
++{
++	if (events & BEV_EVENT_EOF) {
++		printf("Connection closed.\n");
++	} else if (events & BEV_EVENT_ERROR) {
++		printf("Got an error on the connection: %s\n",
++		    strerror(errno));/*XXX win32*/
++	}
++	/* None of the other events can happen here, since we haven't enabled
++	 * timeouts */
++	bufferevent_free(bev);
++}
++
++static void
++signal_cb(evutil_socket_t sig, short events, void *user_data)
++{
++	struct event_base *base = (event_base *)user_data;
++	struct timeval delay = { 2, 0 };
++
++	printf("Caught an interrupt signal; exiting cleanly in two seconds.\n");
++
++	event_base_loopexit(base, &delay);
++}
+diff --git a/test/tests.cpp b/test/tests.cpp
+old mode 100644
+new mode 100755
+index fdf33aa..e56ea83
+--- a/test/tests.cpp
++++ b/test/tests.cpp
+@@ -1,5 +1,4 @@
+-
+-#include "oatpp-test/UnitTest.hpp"
++#include <oatpp-test/UnitTest.hpp>
+ #include <iostream>
+ 
+ namespace {
