@@ -11,17 +11,13 @@
 #include "./PWServer.hpp"
 #include "./AppComponent.hpp"
 #include "./PWTCPConnectionProvider.hpp"
-
 #include "oatpp/network/server/Server.hpp"
 
 #include <iostream>
 
+using namespace oatpp::network::server;
 class PWServer;
-const v_int32 STATUS_CREATED = 0;
-const v_int32 STATUS_RUNNING = 1;
-const v_int32 STATUS_STOPPING = 2;
-const v_int32 STATUS_DONE = 3;
-oatpp::network::server::PWServer *server;
+static oatpp::network::server::PWServer *server;
 
 /**
  *  run() method.
@@ -67,7 +63,7 @@ void run() {
   server = new oatpp::network::server::PWServer(components.serverConnectionProvider.getObject(),
                                                 components.serverConnectionHandler.getObject());
 
-  server->setStatus(::STATUS_CREATED, ::STATUS_RUNNING);
+  server->setStatus(Server::STATUS_CREATED, Server::STATUS_RUNNING);
 
   OATPP_LOGD("Server", "Running on port %s...", components.serverConnectionProvider.getObject()->getProperty("port").toString()->c_str());
   OATPP_LOGD("Server", "Running on port %s...", components.serverConnectionProvider.getObject()->getProperty("host").toString()->c_str());

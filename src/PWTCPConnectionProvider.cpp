@@ -54,7 +54,7 @@
 extern struct event_base *base;
 extern struct sockaddr_in sin;
 extern struct evconnlistener *listener;
-extern oatpp::network::server::PWServer *server;
+extern oatpp::network::server::PWServer *pwserver;
 
 namespace oatpp { namespace network { namespace server {
 PWTCPConnectionProvider::PWTCPConnectionProvider(const oatpp::String& host, v_word16 port)
@@ -89,7 +89,7 @@ void PWTCPConnectionProvider::close() {
 void
 pw_accept_cb(struct evconnlistener *listener, evutil_socket_t fd,
     struct sockaddr *sa, int socklen, void *user_data) {
-    ::server->addConn(fd);
+    ::pwserver->addConn(fd);
 }
   
 static void

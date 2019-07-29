@@ -17,6 +17,13 @@
 
 #include "oatpp/core/macro/component.hpp"
 
+
+extern int oatpp_data_processing_threads;
+extern int oatpp_io_threads;
+extern int oatpp_timer_threads;
+extern std::string oatpp_ip;
+extern int oatpp_port;
+
 /**
  *  Class which creates and holds Application components and registers components in oatpp::base::Environment
  *  Order of components initialization is from top to bottom
@@ -29,9 +36,9 @@ public:
    */
   OATPP_CREATE_COMPONENT(std::shared_ptr<oatpp::async::Executor>, executor)([] {
     return std::make_shared<oatpp::async::Executor>(
-      1 /* Data-Processing threads */,
-      1 /* I/O threads */,
-      1 /* Timer threads */
+      (::oatpp_data_processing_threads) /* Data-Processing threads */,
+      (::oatpp_io_threads) /* I/O threads */,
+      (::oatpp_timer_threads) /* Timer threads */
     );
   }());
 
@@ -40,7 +47,7 @@ public:
    */
   OATPP_CREATE_COMPONENT(std::shared_ptr<oatpp::network::ServerConnectionProvider>, serverConnectionProvider)([] {
     /* non_blocking connections should be used with AsyncHttpConnectionHandler for AsyncIO */
-     return oatpp::network::server::PWTCPConnectionProvider::ccreateShared("10.62.18.29", 11000);
+     return oatpp::network::server::PWTCPConnectionProvider::ccreateShared(oatpp_ip.c_str(), oatpp_port);
     //return oatpp::network::server::PWTCPConnectionProvider::createShared(11000);
   }());
   

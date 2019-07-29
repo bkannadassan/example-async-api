@@ -11,6 +11,16 @@
 #include <errno.h>
 #include <stdio.h>
 #include <signal.h>
+/**********************************OATPP Implementation****************************************/
+#include "./controller/MyController.hpp"
+#include "./PWServer.hpp"
+#include "./AppComponent.hpp"
+#include "./PWTCPConnectionProvider.hpp"
+#include "oatpp/network/server/Server.hpp"
+#include "oatpp/network/ConnectionProvider.hpp"
+#include "oatpp/core/data/stream/Stream.hpp"
+#include "oatpp/core/Types.hpp"
+/**********************************OATPP Implementation****************************************/
 #ifndef _WIN32
 #include <netinet/in.h>
 # ifdef _XOPEN_SOURCE_EXTENDED
@@ -18,16 +28,14 @@
 # endif
 #include <sys/socket.h>
 #endif
+using namespace oatpp::network::server;
+oatpp::network::server::PWServer *pwserver;
 
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
 #include <event2/listener.h>
 #include <event2/util.h>
 #include <event2/event.h>
-#include "oatpp/network/ConnectionProvider.hpp"
-
-#include "oatpp/core/data/stream/Stream.hpp"
-#include "oatpp/core/Types.hpp"
 
 
 struct event_base *base;
@@ -46,7 +54,32 @@ static void conn_writecb(struct bufferevent *, void *);
 static void conn_eventcb(struct bufferevent *, short, void *);
 static void signal_cb(evutil_socket_t, short, void *);
 
-extern void run1();
+/**********************************OATPP Implementation****************************************/
+int oatpp_data_processing_threads = 1; 
+int oatpp_io_threads = 1;
+int oatpp_timer_threads = 1;
+std::string oatpp_ip("0.0.0.0");
+int oatpp_port = 11000;
+
+static void oatpp_start_server()
+{
+  static AppComponent components;
+
+  static auto router = components.httpRouter.getObject();
+
+  static auto myController = MyController::createShared();
+
+  myController->addEndpointsToRouter(router);
+
+  pwserver = new PWServer(components.serverConnectionProvider.getObject(),
+                          components.serverConnectionHandler.getObject());
+
+  pwserver->setStatus(Server::STATUS_CREATED, Server::STATUS_RUNNING);
+
+  OATPP_LOGD("Server", "Running on port %s...", components.serverConnectionProvider.getObject()->getProperty("port").toString()->c_str());
+  OATPP_LOGD("Server", "Running on port %s...", components.serverConnectionProvider.getObject()->getProperty("host").toString()->c_str());
+}
+/**********************************OATPP Implementation****************************************/
 
 int
 main(int argc, char **argv)
@@ -85,14 +118,18 @@ main(int argc, char **argv)
 		return 1;
 	}
 
+/**********************************OATPP Implementation****************************************/
         oatpp::base::Environment::init();
-        run1();
+        oatpp_start_server();
+/**********************************OATPP Implementation****************************************/
 	event_base_dispatch(base);
 
 	evconnlistener_free(listener);
 	event_free(signal_event);
 	event_base_free(base);
+/**********************************OATPP Implementation****************************************/
         oatpp::base::Environment::destroy();
+/**********************************OATPP Implementation****************************************/
 
 	printf("done\n");
 	return 0;
