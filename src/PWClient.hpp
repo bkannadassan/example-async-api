@@ -10,7 +10,7 @@
 class PWApiClient : public oatpp::web::client::ApiClient {
 #include OATPP_CODEGEN_BEGIN(ApiClient)
 
-  API_CLIENT_INIT(DemoApiClient)
+  API_CLIENT_INIT(PWApiClient)
 
   //-----------------------------------------------------------------------------------------------
   // Synchronous calls

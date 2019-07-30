@@ -1,15 +1,23 @@
-#ifndef PWClientAsync_hpp
-#define PWClientAsync_hpp
+//
+//  AsyncExample.hpp
+//  ApiClient-Demo
+//
+//  Created by Leonid on 11/9/18.
+//  Copyright © 2018 oatpp. All rights reserved.
+//
+
+#ifndef AsyncExample_hpp
+#define AsyncExample_hpp
 
 #include "./PWClient.hpp"
 
 #include "oatpp/core/async/Executor.hpp"
 
-class PWClientAsync {
+class AsyncExample {
 private:
   typedef oatpp::web::protocol::http::incoming::Response Response;
 private:
-  constexpr static const char* TAG = "PWClientAsync";
+  constexpr static const char* TAG = "AsyncExample";
 private:
   
   class SendDtoCoroutine : public oatpp::async::Coroutine<SendDtoCoroutine> {
@@ -84,4 +92,4 @@ public:
   
 };
 
-#endif /* PWClientAsync_hpp */
+#endif /* AsyncExample_hpp */
