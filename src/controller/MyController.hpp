@@ -37,23 +37,6 @@ public:
     return std::shared_ptr<MyController>(new MyController(objectMapper));
   }
   
-  /**
-   *  Begin ENDPOINTs generation ('ApiController' codegen)
-   */
-  static void show_stackframe() {
-    printf("\n Bactrace Tracing \n\n");
-    void *trace[16];
-    char **messages = (char **)NULL;
-    int i, trace_size = 0;
-
-    trace_size = backtrace(trace, 16);
-    messages = backtrace_symbols(trace, trace_size);
-    printf("[bt] Execution path:\n");
-    for (i=0; i<trace_size; ++i)
-	  printf("[bt] %s\n", messages[i]);
-    return;
-  }
-
 #include OATPP_CODEGEN_BEGIN(ApiController)
   
   /**
@@ -68,7 +51,6 @@ public:
      *  returns Action (what to do next)
      */
     Action act() override {
-      show_stackframe();
       auto dto = HelloDto::createShared();
       dto->message = "Hello Async!";
       dto->server = Header::Value::SERVER;
@@ -84,13 +66,11 @@ public:
     
     Action act() override {
       /* return Action to start child coroutine to read body */
-      MyController::show_stackframe();
       return request->readBodyToStringAsync().callbackTo(&PostEchoStringBody::returnResponse);
     }
     
     Action returnResponse(const oatpp::String& body){
       /* return Action to return created OutgoingResponse */
-      MyController::show_stackframe();
       return _return(controller->createResponse(Status::CODE_200, body));
     }
     
@@ -106,13 +86,11 @@ public:
     
     Action act() override {
       /* return Action to start child coroutine to read body */
-      MyController::show_stackframe();
       return request->readBodyToStringAsync().callbackTo(&EchoStringBody::returnResponse);
     }
     
     Action returnResponse(const oatpp::String& body){
       /* return Action to return created OutgoingResponse */
-      MyController::show_stackframe();
       return _return(controller->createResponse(Status::CODE_200, body));
     }
     
